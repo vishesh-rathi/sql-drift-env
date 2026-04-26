@@ -1,0 +1,183 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+# All rights reserved.
+#
+# This source code is licensed under the BSD-style license found in the
+# LICENSE file in the root directory of this source tree.
+
+[build-system]
+requires = ["setuptools>=45", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sql_drift_env"
+version = "0.1.0"
+description = "SQLDrift: OpenEnv gym for repairing and optimizing SQL under live schema/business-rule drift"
+requires-python = ">=3.12,<3.14"
+dependencies = [
+    "duckdb>=1.5.2,<2.0",
+    # huggingface-hub: floor must satisfy `transformers>=5.2.0` (which
+    # needs hub>=1.3.0) — and the highest transformers we allow
+    # (5.4.x–5.5.0) needs hub>=1.5.0. Pin the floor at 1.5.0 to match
+    # the worst case so the [train] extra resolves cleanly. Cap <2.0
+    # because the `run_job` / `fetch_job_logs` / `inspect_job` API we
+    # call in utilities/run_training_job.py landed in the 1.x line.
+    "huggingface-hub>=1.5.0,<2.0",
+    "openenv-core[core]>=0.2.2,<0.4",
+    "sqlglot>=30.6.0,<40.0",
+    "pydantic>=2.8.0,<3.0",
+    "python-dotenv>=1.2.2,<2.0",
+    "openai>=2.32.0,<3.0",
+]
+
+[project.optional-dependencies]
+evidence = [
+    "matplotlib>=3.8.0,<4.0",
+    "pandas>=2.0.0,<3.0",
+]
+dev = [
+    "mypy>=1.20.1",
+    "pytest>=9.0.3",
+    "pytest-asyncio>=1.3.0",
+    "pytest-cov>=7.0.0",
+    "ruff>=0.15.11",
+    "httpx>=0.28.0",
+]
+train = [
+    # TRL-only stack — mirrors Hugging Face's reference notebooks for
+    # GRPO with QLoRA (`grpo_trl_lora_qlora.ipynb`) and the OpenEnv
+    # multi-turn tool-calling examples (`openenv_wordle_grpo.ipynb`).
+    # No Unsloth: AutoModelForCausalLM + BitsAndBytesConfig is the
+    # canonical path the TRL examples use, and it resolves cleanly
+    # on a free Colab T4.
+    "trl[peft]>=1.2.0,<2.0",
+    "datasets>=3.0.0,<5.0",
+    # TRL 1.2 floors transformers at >=5.0. Keep the ceiling open so
+    # we follow the TRL release cadence.
+    "transformers>=5.5.0",
+    "accelerate>=1.13.0",
+    "peft>=0.19",
+    "bitsandbytes>=0.46.1,!=0.48.0",
+    # jmespath: required by TRL's GRPOTrainer whenever `tools` or
+    # `environment_factory` is used (parses tool-call responses from
+    # the model). TRL raises ImportError at GRPOTrainer.__init__
+    # otherwise. Pure-Python, no transitive deps.
+    # https://github.com/huggingface/trl/blob/main/trl/trainer/grpo_trainer.py
+    "jmespath>=1.0,<2.0",
+    "tensorboard>=2.20,<3.0",
+]
+
+[project.scripts]
+# Flat package layout; see _cli.py. Runtime path: site-packages/sql_drift_env/
+server = "sql_drift_env._cli:main"
+
+[tool.setuptools]
+include-package-data = true
+packages = [
+    "sql_drift_env",
+    "sql_drift_env.scenarios",
+    "sql_drift_env.engine",
+    "sql_drift_env.skill_library",
+    "sql_drift_env.actors",
+    "sql_drift_env.training",
+    "sql_drift_env.server",
+    "sql_drift_env.utilities",
+]
+
+[tool.setuptools.package-dir]
+"sql_drift_env" = "."
+"sql_drift_env.scenarios" = "scenarios"
+"sql_drift_env.engine" = "engine"
+"sql_drift_env.skill_library" = "skill_library"
+"sql_drift_env.actors" = "actors"
+"sql_drift_env.training" = "training"
+"sql_drift_env.server" = "server"
+"sql_drift_env.utilities" = "utilities"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+markers = [
+    "slow: marks tests as slow (excluded by default; run via `pytest -m slow`)",
+]
+# Default excludes slow tests so CI stays on a fast path; run `pytest -m slow` for full suite.
+addopts = "-ra --strict-markers -m 'not slow'"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+extend-exclude = [".venv", "design", "*.egg-info", "*.ipynb"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM"]
+ignore = ["E501"]
+
+# Prefer fixing structure over scattered inline suppressions. See each rule in Ruff docs.
+[tool.ruff.lint.per-file-ignores]
+"_cli.py" = ["PLC0415"]
+"training/grpo_train.py" = ["PLC0415"]
+"engine/profiler.py" = ["BLE001"]
+"scenarios/__init__.py" = ["F401"]
+"tests/unit/test_p0_smoke.py" = ["F401"]
+"utilities/verbose_api_rollout.py" = ["E402"]
+"utilities/demo_rollout.py" = ["E402"]
+"tests/unit/test_drift_scenarios.py" = ["E402"]
+"tests/unit/test_profiler.py" = ["E402"]
+"tests/unit/test_drift.py" = ["E402"]
+"tests/unit/test_runtime.py" = ["E402"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+ignore_missing_imports = true
+explicit_package_bases = true
+mypy_path = "."
+files = [
+    "_cli.py",
+    "actors",
+    "client.py",
+    "engine",
+    "models.py",
+    "scenarios",
+    "utilities",
+    "server",
+    "skill_library",
+    "training",
+]
+exclude = [
+    "\\.venv",
+    "design",
+    ".*\\.egg-info",
+    "tests",
+    "build",
+    "dist",
+]
+
+# Subclasses in these modules call into openenv-core (no stubs). Relax only here.
+[[tool.mypy.overrides]]
+module = [
+    "client",
+    "models",
+    "engine.reward",
+    "server.app",
+    "server.sql_drift_env_environment",
+    "training.grpo_train",
+]
+disallow_subclassing_any = false
+warn_return_any = false
+
+[tool.coverage.run]
+# pytest-cov can hit upstream issues with beartype when tracing; run plain pytest for CI.
+source = ["engine", "scenarios", "skill_library", "actors", "models.py"]
+omit = ["tests/*", ".venv/*"]
+
+[tool.coverage.report]
+skip_empty = true
+exclude_lines = [
+    "pragma: no cover",
+    "if __name__ == \"__main__\":",
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+    "if 0:",
+    "if False:",
+    "\\.\\.\\.",
+]

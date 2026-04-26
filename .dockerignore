@@ -1,0 +1,52 @@
+# Reuse gitignore + these additions
+**/__pycache__/
+**/.venv/
+**/.pytest_cache/
+**/.mypy_cache/
+**/.ruff_cache/
+**/.DS_Store
+.git/
+.gitignore
+.github/
+
+# DESIGN DOCS 
+design/
+
+# IDE
+.cursor/
+.claude/
+
+# Tests (keep src only)
+tests/
+outputs/
+
+# Environment variables
+**/.env
+**/.env.*
+
+# HF + Training
+wandb/
+runs/
+*.safetensors
+*.bin
+*.pt
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg
+*.egg-info/
+.eggs/
+build/
+dist/
+
+# Virtual envs
+.venv/
+venv/
+env/

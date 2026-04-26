@@ -1,0 +1,62 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg
+*.egg-info/
+.eggs/
+build/
+dist/
+
+# Virtual envs
+.venv/
+venv/
+env/
+
+# UV
+.uv/
+
+# IDE
+.cursor/
+.claude/
+
+# OpenEnv runtime artifacts
+outputs/**
+
+# HF + Training
+wandb/
+runs/
+*.safetensors
+*.bin
+*.pt
+
+# Jupyter
+.ipynb_checkpoints/
+
+# DESIGN DOCS — never push to HF
+design/
+
+# Local-only artifacts
+.venv/
+outputs/logs/
+outputs/evals/
+outputs/checkpoints/
+wandb/
+runs/
+training/evidence/
+
+# Dev tooling
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+tests/
+*.test.py
+.coverage
+htmlcov/
+.tox/
+
+# Secrets
+**/.env
+**/.env.*

@@ -1,0 +1,60 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg
+*.egg-info/
+.eggs/
+build/
+dist/
+
+
+# Virtual envs
+.venv/
+venv/
+env/
+
+# UV
+.uv/
+
+# Test + coverage
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.mypy_cache/
+.ruff_cache/
+.DS_Store
+
+# IDE
+.cursor/
+.claude/
+
+# Environment variables
+**/.env
+**/.env.*
+
+# OpenEnv runtime artifacts
+outputs/logs/
+outputs/evals/
+outputs/checkpoints/
+outputs/*.ckpt
+training/evidence/
+
+# HF + Training
+wandb/
+runs/
+*.safetensors
+*.bin
+*.pt
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Docker local caches
+.docker-cache/
+
+# DESIGN DOCS
+design/
