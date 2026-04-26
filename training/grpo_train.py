@@ -48,6 +48,36 @@ from utilities.logger import get_module_logger
 _LOG = get_module_logger(__name__)
 
 
+def coerce_trainable_from_bfloat16_to_float32(model: Any) -> int:
+    """Re-type trainable parameters off ``bfloat16`` when using legacy fp16 AMP.
+
+    With ``GRPOConfig(fp16=True, bf16=False)``, Hugging Face :class:`Trainer`
+    uses a :class:`torch.amp.GradScaler`.  PEFT/TRL may still build new LoRA
+    matrices in **bfloat16** (checkpoint / config default).  The scaler’s
+    CUDA foreach helpers then fail on T4 and similar with::
+
+        NotImplementedError: _amp_foreach_non_finite_check_and_unscale_cuda
+        not implemented for 'BFloat16'
+
+    Casting any *trainable* ``bfloat16`` parameter to ``float32`` matches the
+    usual “fp32 master weight” path and avoids the bug.
+
+    Returns the number of parameters updated.
+    """
+    import torch
+
+    n = 0
+    for p in model.parameters():
+        if p.requires_grad and p.dtype == torch.bfloat16:
+            p.data = p.data.to(torch.float32)
+            n += 1
+    if n:
+        _LOG.info(
+            "Coerced %d trainable bfloat16 parameter tensors to float32 (fp16 AMP / GradScaler).", n
+        )
+    return n
+
+
 def iter_curriculum(config: GRPOConfig, *, seed: int = 0) -> Iterator[tuple[str, int]]:
     """Yield an infinite stream of ``(scenario_id, episode_seed)`` tuples."""
     rng = Random(seed)
@@ -342,6 +372,8 @@ def train(config: GRPOConfig) -> Any:
         environment_factory=partial(SqlDriftToolEnv, env_url=config.env_base_url),
         peft_config=peft_config,
     )
+    if config.fp16 and not config.bf16:
+        coerce_trainable_from_bfloat16_to_float32(trainer.model)
     trainer.add_callback(_build_flush_log_history_callback(out / "log_history.jsonl"))
 
     _LOG.info(
@@ -400,6 +432,7 @@ __all__ = [
     "build_dataset",
     "build_env_client",
     "build_peft_config",
+    "coerce_trainable_from_bfloat16_to_float32",
     "iter_curriculum",
     "load_model_and_tokenizer",
     "reward_from_environments",

@@ -117,8 +117,12 @@ class GRPOConfig:
     temperature: float = 0.7
     top_p: float = 0.8
     seed: int = 0
-    # TRL defaults bf16 to True when fp16 is not explicitly set, but Colab
-    # T4 supports fp16 only (no bf16 hardware). Keep fp16=True for T4.
+    # Mixed precision: pick *one* of fp16 or bf16 (mutually exclusive).  T4 works
+    # well with fp16=True, bf16=False.  If you see GradScaler errors involving
+    # BFloat16 on trainable weights, use ``coerce_trainable_from_bfloat16_to_float32``
+    # after ``GRPOTrainer`` (see ``training.grpo_train``) or switch to full
+    # ``fp16=False, bf16=False`` (fp32, slower / more VRAM).  On Ampere+ you can
+    # try ``fp16=False, bf16=True`` (autocast bf16, no legacy fp16 scaler).
     fp16: bool = True
     bf16: bool = False
 

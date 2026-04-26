@@ -5,6 +5,8 @@ from __future__ import annotations
 import sys
 from types import SimpleNamespace
 
+import pytest
+
 import training.grpo_train as grpo_train
 from training.config import GRPOConfig
 
@@ -50,10 +52,15 @@ def test_train_uses_config_seed_for_global_and_curriculum_rngs(monkeypatch, tmp_
         def __init__(self, **kwargs) -> None:
             self.kwargs = kwargs
 
+    class _EmptyTorchModel:
+        def parameters(self):
+            return iter(())
+
     class _FakeTrainer:
         def __init__(self, **kwargs) -> None:
             trainer_kwargs.update(kwargs)
             self.callbacks: list[object] = []
+            self.model = _EmptyTorchModel()
             trainer_instances.append(self)
 
         def add_callback(self, cb: object) -> None:
@@ -122,6 +129,18 @@ def test_reward_from_environments_uses_episode_return_over_terminal_reward() -> 
     ]
 
     assert grpo_train.reward_from_environments(envs) == [1.25, -0.12]
+
+
+def test_coerce_trainable_from_bfloat16_to_float32() -> None:
+    torch = pytest.importorskip("torch")
+    from torch import nn
+
+    m = nn.Linear(2, 2, bias=False)
+    for p in m.parameters():
+        p.data = p.data.to(torch.bfloat16)
+    assert grpo_train.coerce_trainable_from_bfloat16_to_float32(m) == 1
+    for p in m.parameters():
+        assert p.dtype == torch.float32
 
 
 def test_reward_from_environments_diversity_does_not_dominate() -> None:
